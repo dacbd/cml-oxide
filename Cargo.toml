@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.81"
 clap = { version = "4.5.3", features = ["derive", "env"] }
+git2 = "0.19.0"
 nanoid = "0.4.0"
 octocrab = "0.38.0"
 serde = { version = "1.0.204", features = ["derive"] }

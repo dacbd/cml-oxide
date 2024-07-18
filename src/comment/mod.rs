@@ -1,4 +1,7 @@
 use clap::Parser;
+use std::fs;
+use std::path::Path;
+use std::str::FromStr;
 
 #[derive(Debug, Parser)]
 #[command()]
@@ -11,4 +14,68 @@ pub struct Args {
     target: Option<String>,
     #[arg(long, default_value_t = true)]
     watermark: bool,
+}
+impl Args {
+    fn path_is_file(&self) -> bool {
+        let path = Path::new(&self.file);
+        return path.exists() && path.is_file();
+    }
+    fn read_file(&self) -> String {
+        fs::read_to_string(&self.file).expect("valid path")
+    }
+    pub fn get_comment_body(&self) -> String {
+        if self.path_is_file() {
+            return self.read_file();
+        }
+        return self.file.to_owned();
+    }
+}
+
+#[derive(Debug)]
+enum CommentLocation {
+    Commit(String),
+    Pr(String),
+    Issue(String),
+}
+impl CommentLocation {
+    pub fn c_from_string(s: &String) -> Option<Self> {
+        let parts = s.split_once("/");
+        match parts {
+            Some((comment_type, id)) => {
+                let comment_id = String::from(id);
+                match comment_type {
+                    "commit" => return Some(CommentLocation::Commit(comment_id)),
+                    "pr" => return Some(CommentLocation::Pr(comment_id)),
+                    "issue" => return Some(CommentLocation::Issue(comment_id)),
+                    _ => return None,
+                }
+            }
+            None => return None,
+        }
+    }
+    pub fn c_from_run_state(going_to_be_a_struct: String) -> Option<Self> {
+        todo!("todo")
+    }
+}
+
+#[derive(Debug)]
+pub struct Comment {
+    provided_body: String,
+    watermark: String,
+    target: CommentLocation,
+}
+
+impl Comment {
+    pub fn from_args(args: &Args) -> Self {
+        let target = match &args.target {
+            Some(t) => CommentLocation::c_from_string(&t).expect("Target Comment to be valid"),
+            // todo from state
+            None => CommentLocation::Commit(String::from("todo")),
+        };
+        return Comment {
+            provided_body: args.get_comment_body(),
+            watermark: String::from("todo"),
+            target,
+        };
+    }
 }
