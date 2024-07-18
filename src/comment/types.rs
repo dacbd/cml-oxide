@@ -54,26 +54,6 @@ impl fmt::Display for CommentTarget {
         }
     }
 }
-impl CommentTarget {
-    pub fn c_from_string(s: &String) -> Option<Self> {
-        let parts = s.split_once("/");
-        match parts {
-            Some((comment_type, id)) => {
-                let comment_id = String::from(id);
-                match comment_type {
-                    "commit" => return Some(CommentTarget::Commit(comment_id)),
-                    "pr" => return Some(CommentTarget::Pr(comment_id)),
-                    "issue" => return Some(CommentTarget::Issue(comment_id)),
-                    _ => return None,
-                }
-            }
-            None => return None,
-        }
-    }
-    pub fn c_from_run_state(going_to_be_a_struct: String) -> Option<Self> {
-        todo!("todo")
-    }
-}
 
 #[cfg(test)]
 mod test_comment_target {
