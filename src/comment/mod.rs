@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::fmt;
 use std::fs;
 use std::path::Path;
+use std::str::FromStr;
 
 #[derive(Debug, Parser)]
 #[command()]
@@ -11,7 +12,7 @@ pub struct Args {
     file: String,
     /// Comment type, ex: commit, pr, issue, commit/1337dacb, pr/42, issue/4237
     /// default is pr, but will fall back to a commit comment
-    #[arg(short, long)]
+    #[arg(short, long, value_enum)]
     target: Option<String>,
     #[arg(long, default_value_t = true)]
     watermark: bool,
@@ -38,24 +39,40 @@ enum CommentLocation {
     Pr(String),
     Issue(String),
 }
+impl FromStr for CommentLocation {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "commit" => Ok(CommentLocation::Commit(String::from(""))),
+            "pr" => Ok(CommentLocation::Pr(String::from(""))),
+            "issue" => Ok(CommentLocation::Issue(String::from(""))),
+            _ => {
+                let parts = s.split_once("/");
+                match parts {
+                    Some((comment_type, id)) => {
+                        let comment_id = String::from(id);
+                        match comment_type {
+                            "commit" => return Ok(CommentLocation::Commit(comment_id)),
+                            "pr" => return Ok(CommentLocation::Pr(comment_id)),
+                            "issue" => return Ok(CommentLocation::Issue(comment_id)),
+                            _ => return Err("Unknown target".into()),
+                        }
+                    }
+                    None => return Err("Invalid format".into()),
+                }
+            }
+        }
+    }
+}
 impl<'de> Deserialize<'de> for CommentLocation {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
-        let parts = s.split_once("/");
-        match parts {
-            Some((comment_type, id)) => {
-                let comment_id = String::from(id);
-                match comment_type {
-                    "commit" => return Ok(CommentLocation::Commit(comment_id)),
-                    "pr" => return Ok(CommentLocation::Pr(comment_id)),
-                    "issue" => return Ok(CommentLocation::Issue(comment_id)),
-                    _ => return Err(serde::de::Error::custom("Unknown target")),
-                }
-            }
-            None => return Err(serde::de::Error::custom("Invalid format")),
+        return match CommentLocation::from_str(s) {
+            Ok(cl) => Ok(cl),
+            Err(e) => Err(serde::de::Error::custom(e))
         }
     }
 }
@@ -99,7 +116,7 @@ pub struct Comment {
 impl Comment {
     pub fn from_args(args: &Args) -> Self {
         let target = match &args.target {
-            Some(t) => CommentLocation::c_from_string(&t).expect("Target Comment to be valid"),
+            Some(t) => ,
             // todo from state
             None => CommentLocation::Commit(String::from("todo")),
         };
