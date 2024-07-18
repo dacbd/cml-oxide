@@ -1,7 +1,8 @@
 use clap::Parser;
+use serde::Deserialize;
+use std::fmt;
 use std::fs;
 use std::path::Path;
-use std::str::FromStr;
 
 #[derive(Debug, Parser)]
 #[command()]
@@ -36,6 +37,36 @@ enum CommentLocation {
     Commit(String),
     Pr(String),
     Issue(String),
+}
+impl<'de> Deserialize<'de> for CommentLocation {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: &str = Deserialize::deserialize(deserializer)?;
+        let parts = s.split_once("/");
+        match parts {
+            Some((comment_type, id)) => {
+                let comment_id = String::from(id);
+                match comment_type {
+                    "commit" => return Ok(CommentLocation::Commit(comment_id)),
+                    "pr" => return Ok(CommentLocation::Pr(comment_id)),
+                    "issue" => return Ok(CommentLocation::Issue(comment_id)),
+                    _ => return Err(serde::de::Error::custom("Unknown target")),
+                }
+            }
+            None => return Err(serde::de::Error::custom("Invalid format")),
+        }
+    }
+}
+impl fmt::Display for CommentLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CommentLocation::Commit(id) => write!(f, "commit/{}", id),
+            CommentLocation::Pr(id) => write!(f, "pr/{}", id),
+            CommentLocation::Issue(id) => write!(f, "issue/{}", id),
+        }
+    }
 }
 impl CommentLocation {
     pub fn c_from_string(s: &String) -> Option<Self> {
