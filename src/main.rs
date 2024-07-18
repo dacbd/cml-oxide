@@ -4,10 +4,11 @@ mod common;
 mod pr;
 mod publish;
 mod runner;
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use serde::Serialize;
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -32,28 +33,39 @@ enum Commands {
     PR(pr::Args),
 }
 
-#[derive(Debug, clap::ValueEnum, Clone, Copy, Serialize)]
+#[derive(Debug, clap::ValueEnum, Clone, Serialize)]
 enum Forge {
     Github,
     Gitlab,
     Unknown,
 }
-/*
-impl ToString for Forge {
-    fn to_string(&self) -> String {
-        match self {
-            Forge::Github => String::from("github"),
-            Forge::Gitlab => String::from("gitlab"),
-            Forge::Unknown => String::from("unknown"),
+impl Forge {
+    pub fn get_token(&self) -> Result<String, &str> {
+        let native_token: Option<String> = match self {
+            Self::Github => std::env::var("GITHUB_TOKEN").ok(),
+            Self::Gitlab => std::env::var("GITLAB_TOKEN").ok(),
+            Self::Unknown => None,
+        };
+        match native_token {
+            Some(t) => Ok(t),
+            None => match std::env::var("CML_TOKEN").or_else(|_| std::env::var("REPO_TOKEN")) {
+                Ok(t) => Ok(t),
+                Err(e) => {
+                    error!(error = ?e, "Failed to load auth env variables");
+                    Err("No token detected")
+                }
+            },
         }
     }
 }
-*/
 impl Default for Forge {
     fn default() -> Self {
-        // TODO: also look for REPO_TOKEN
-        if let Ok(_cml_token) = std::env::var("CML_TOKEN") {
+        if let Ok(token) = std::env::var("CML_TOKEN").or_else(|_| std::env::var("REPO_TOKEN")) {
             // TODO: inspect token to determine forge
+            let gh_prefixes = ["ghp", "gho", "ghu", "ghs", "ghr"];
+            if gh_prefixes.iter().any(|&prefix| token.starts_with(prefix)) {
+                return Self::Github;
+            }
             return Self::Unknown;
         }
         if let Ok(_github_token) = std::env::var("GITHUB_TOKEN") {
@@ -83,7 +95,8 @@ async fn main() -> Result<()> {
         Commands::Comment(args) => {
             println!("Comment not implemented yet {:?}", args);
             let payload = comment::Comment::from_args(&args);
-            println!("{:?}", payload)
+            println!("{:?}", payload);
+            payload.send(root_args.forge).await;
         }
         Commands::PR(args) => {
             println!("PR not implemented yet {:?}", args)

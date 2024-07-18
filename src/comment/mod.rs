@@ -1,5 +1,8 @@
 mod types;
+
+use crate::{common, Forge};
 use clap::Parser;
+use octocrab;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
@@ -51,5 +54,26 @@ impl Comment {
             watermark: String::from("todo"),
             target,
         };
+    }
+    pub async fn send(&self, forge: Forge) {
+        let body = format!("{}\n\n{}", self.provided_body, self.watermark);
+        let git = common::cwd_is_git_repo().unwrap();
+
+        let head = git.head().unwrap();
+        let sha = head.shorthand().unwrap();
+        let pat = forge.get_token().unwrap();
+
+        let github = octocrab::Octocrab::builder()
+            .personal_token(pat)
+            .build()
+            .unwrap();
+
+        let comment = github
+            .commits("dacbd", "cml-oxide")
+            .create_comment(sha, body)
+            .send()
+            .await
+            .unwrap();
+        println!("{:?}", comment)
     }
 }
