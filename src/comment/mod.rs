@@ -12,8 +12,8 @@ pub struct Args {
     file: String,
     /// Comment type, ex: commit, pr, issue, commit/1337dacb, pr/42, issue/4237
     /// default is pr, but will fall back to a commit comment
-    #[arg(short, long, value_enum)]
-    target: Option<String>,
+    #[arg(short, long, value_parser = CommentLocation::from_str )]
+    target: Option<CommentLocation>,
     #[arg(long, default_value_t = true)]
     watermark: bool,
 }
@@ -33,7 +33,7 @@ impl Args {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum CommentLocation {
     Commit(String),
     Pr(String),
@@ -72,8 +72,8 @@ impl<'de> Deserialize<'de> for CommentLocation {
         let s: &str = Deserialize::deserialize(deserializer)?;
         return match CommentLocation::from_str(s) {
             Ok(cl) => Ok(cl),
-            Err(e) => Err(serde::de::Error::custom(e))
-        }
+            Err(e) => Err(serde::de::Error::custom(e)),
+        };
     }
 }
 impl fmt::Display for CommentLocation {
@@ -116,7 +116,7 @@ pub struct Comment {
 impl Comment {
     pub fn from_args(args: &Args) -> Self {
         let target = match &args.target {
-            Some(t) => ,
+            Some(t) => t.to_owned(),
             // todo from state
             None => CommentLocation::Commit(String::from("todo")),
         };
