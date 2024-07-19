@@ -1,6 +1,7 @@
 mod comment;
 mod common;
 //mod drivers;
+mod error;
 mod pr;
 mod publish;
 mod runner;
@@ -83,7 +84,9 @@ async fn main() -> Result<()> {
     let root_args = Cli::parse();
     // TODO: logging level from the cli args isnt work how I want.
     let logging_level = determine_log_level(root_args.verbose);
-    let _ = tracing_subscriber::fmt().with_max_level(logging_level);
+    tracing_subscriber::fmt()
+        .with_max_level(logging_level)
+        .init();
 
     match root_args.command {
         Commands::Runner(args) => {

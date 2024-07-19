@@ -57,10 +57,7 @@ impl Comment {
     }
     pub async fn send(&self, forge: Forge) {
         let body = format!("{}\n\n{}", self.provided_body, self.watermark);
-        let git = common::cwd_is_git_repo().unwrap();
-
-        let head = git.head().unwrap();
-        let sha = head.shorthand().unwrap();
+        let state = common::State::init().unwrap();
         let pat = forge.get_token().unwrap();
 
         let github = octocrab::Octocrab::builder()
@@ -68,9 +65,11 @@ impl Comment {
             .build()
             .unwrap();
 
+        let owner = state.git_remote.owner.unwrap();
+        let repo_name = state.git_remote.name;
         let comment = github
-            .commits("dacbd", "cml-oxide")
-            .create_comment(sha, body)
+            .commits(owner, repo_name)
+            .create_comment(state.head_sha, body)
             .send()
             .await
             .unwrap();
