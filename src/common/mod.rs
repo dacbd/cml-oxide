@@ -6,6 +6,8 @@ use git2::{Config, Repository};
 use git_url_parse::GitUrl;
 use tracing::{error, info};
 
+pub mod forge;
+
 pub struct State {
     pub head_sha: String,
     pub git_remote: GitUrl,
