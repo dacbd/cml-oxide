@@ -2,12 +2,12 @@ use serde::Serialize;
 use tracing::error;
 
 #[derive(Debug, clap::ValueEnum, Clone, Serialize)]
-pub enum Forge {
+pub enum ForgeType {
     Github,
     Gitlab,
     Unknown,
 }
-impl Forge {
+impl ForgeType {
     pub fn get_token(&self) -> Result<String, &str> {
         let native_token: Option<String> = match self {
             Self::Github => std::env::var("GITHUB_TOKEN").ok(),
@@ -26,7 +26,7 @@ impl Forge {
         }
     }
 }
-impl Default for Forge {
+impl Default for ForgeType {
     fn default() -> Self {
         if let Ok(token) = std::env::var("CML_TOKEN").or_else(|_| std::env::var("REPO_TOKEN")) {
             // TODO: inspect token to determine forge

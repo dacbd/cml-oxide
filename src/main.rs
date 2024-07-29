@@ -8,7 +8,7 @@ mod runner;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use common::forge::Forge;
+use common::forge::ForgeType;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -18,8 +18,8 @@ struct Cli {
     /// Logging level
     #[arg(short, long, default_value_t = 2, action = clap::ArgAction::Count)]
     verbose: u8,
-    #[arg(long, value_enum, default_value_t = Forge::default() )]
-    forge: Forge,
+    #[arg(long, value_enum, default_value_t = ForgeType::default() )]
+    forge: ForgeType,
 }
 #[derive(Debug, Subcommand)]
 enum Commands {

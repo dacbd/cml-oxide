@@ -1,7 +1,7 @@
 mod types;
 
 use crate::error::CmlError;
-use crate::{common, Forge};
+use crate::{common, ForgeType};
 use anyhow::Result;
 use clap::Parser;
 use octocrab;
@@ -57,7 +57,7 @@ impl Comment {
             target,
         };
     }
-    pub async fn send(&self, forge: Forge) -> Result<String> {
+    pub async fn send(&self, forge: ForgeType) -> Result<String> {
         let body = format!("{}\n\n{}", self.provided_body, self.watermark);
         let state = common::State::init().unwrap();
         let pat = forge.get_token().unwrap();
