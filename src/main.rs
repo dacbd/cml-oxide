@@ -8,7 +8,7 @@ mod runner;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use common::forge::ForgeType;
+use common::forge::{Forge, ForgeType};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -51,9 +51,11 @@ async fn main() -> Result<()> {
         }
         Commands::Comment(args) => {
             println!("Comment not implemented yet {:?}", args);
+            let forge = Forge::init(root_args.forge)?;
             let payload = comment::Comment::from_args(&args);
             println!("{:?}", payload);
-            payload.send(root_args.forge).await;
+            let url = payload.send(&forge).await?;
+            println!("{}", url);
         }
         Commands::PR(args) => {
             println!("PR not implemented yet {:?}", args)

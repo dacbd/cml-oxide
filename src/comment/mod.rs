@@ -1,7 +1,7 @@
 mod types;
 
 use crate::error::CmlError;
-use crate::{common, ForgeType};
+use crate::{common, Forge, ForgeType};
 use anyhow::Result;
 use clap::Parser;
 use octocrab;
@@ -57,64 +57,43 @@ impl Comment {
             target,
         };
     }
-    pub async fn send(&self, forge: ForgeType) -> Result<String> {
+    pub async fn send(&self, forge: &Forge) -> Result<String> {
         let body = format!("{}\n\n{}", self.provided_body, self.watermark);
         let state = common::State::init().unwrap();
-        let pat = forge.get_token().unwrap();
 
-        let github = octocrab::Octocrab::builder()
-            .personal_token(pat)
-            .build()
-            .unwrap();
-
-        let owner = &state.git_remote.owner.unwrap();
-        let repo_name = &state.git_remote.name;
+        let owner_str = state
+            .git_remote
+            .owner
+            .ok_or_else(|| CmlError::Unimplemented)?;
+        let owner = owner_str.as_str();
+        let repo_name = state.git_remote.name.as_str();
 
         match &self.target {
             types::CommentTarget::Commit(id) => {
                 let sha = if id.is_empty() { &state.head_sha } else { id };
-                let comment = github
-                    .commits(owner, repo_name)
-                    .create_comment(sha, body)
-                    .send()
-                    .await?;
-                return Ok(comment.html_url.to_string());
+                return forge.comment_on_commit(owner, repo_name, sha, body).await;
             }
             types::CommentTarget::Pr(id) => {
                 let pr_number = if id.is_empty() {
-                    github
-                        .commits(owner, repo_name)
-                        .associated_pull_requests(octocrab::commits::PullRequestTarget::Sha(
-                            state.head_sha,
-                        ))
-                        .send()
+                    forge
+                        .get_pr_by_commit_sha(owner, repo_name, &state.head_sha)
                         .await?
-                        .take_items()
-                        .last()
-                        .ok_or(crate::error::CmlError::Unimplemented)?
-                        .number
-                        .to_string()
                 } else {
                     id.to_string()
                 };
-                let pr_id = u64::from_str(&pr_number)?;
-                let comment = github
-                    .issues(owner, repo_name)
-                    .create_comment(pr_id, body)
-                    .await?;
-                return Ok(comment.html_url.to_string());
+                return forge
+                    .comment_on_pr(owner, repo_name, &pr_number, body)
+                    .await;
             }
             types::CommentTarget::Issue(id) => {
                 let issue_number = if id.is_empty() {
                     return Err(crate::error::CmlError::Unimplemented.into());
                 } else {
-                    u64::from_str(id)?
+                    id
                 };
-                let comment = github
-                    .issues(owner, repo_name)
-                    .create_comment(issue_number, body)
-                    .await?;
-                return Ok(comment.html_url.to_string());
+                return forge
+                    .comment_on_issue(owner, repo_name, issue_number, body)
+                    .await;
             }
         }
     }
